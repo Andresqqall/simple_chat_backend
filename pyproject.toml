@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "simple-chat"
+version = "0.1.0"
+description = ""
+authors = ["andriiskrypnyk <andre.beltukov5656@gmail.com>"]
+#readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+django = "4.2"
+pytest = "^8.2.2"
+djangorestframework = "^3.15.1"
+drf-yasg = "^1.21.7"
+djangorestframework-simplejwt = "^5.3.1"
+python-dotenv = "^1.0.1"
+drf-rw-serializers = "^1.4.0"
+django-filter = "^24.2"
+markdown = "^3.6"
+pytest-django = "^4.8.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
