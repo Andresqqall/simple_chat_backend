@@ -9,11 +9,9 @@ User = get_user_model()
 
 class UserSelfAPIView(generics.RetrieveUpdateAPIView):
     """
-        Retrieves and updates information for the authenticated user.
+    API view to retrieve and update information for the authenticated user.
     """
-
     serializer_class = BaseUserSerializer
 
     def get_object(self):
-        user_id = getattr(self.request.user, 'id', None)
-        return get_object_or_404(User, id=user_id)
+        return get_object_or_404(User, id=self.request.user.id)

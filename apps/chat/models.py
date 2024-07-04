@@ -9,11 +9,7 @@ User = get_user_model()
 
 class Thread(WhoDidIt):
     """
-        Represents a chat thread.
-
-        Attributes:
-            participants (ManyToManyField): A many-to-many relationship to the User model, representing
-                                            the chat members involved in this thread.
+    Represents a chat thread.
     """
     objects = ThreadManager()
 
@@ -26,26 +22,20 @@ class Thread(WhoDidIt):
     class Meta:
         ordering = ['-id']
 
+    def __str__(self):
+        return f"Thread ({self.id})"
+
 
 class Message(WhoDidIt):
     """
-       Represents a message in a chat thread.
-
-       Attributes:
-           thread (ForeignKey): A foreign key to the Thread model, representing the thread to which the message belongs.
-                               The message will not be deleted if the thread is deleted, but the foreign key
-                               will be set to NULL instead.
-           text (TextField): The content of the message.
-           is_read (BooleanField): Indicates whether the message has been read. Defaults to False.
+    Represents a message in a chat thread.
     """
     objects = MessageManager()
 
     thread = models.ForeignKey(
         to=Thread,
-        verbose_name='message tread',
-        related_name='tread_messages',
-
-        # This can also be CASCADE, but I think it's better to store the message to avoid other causes.
+        verbose_name='message thread',
+        related_name='thread_messages',
         on_delete=models.SET_NULL,
         null=True,
         blank=True
@@ -60,3 +50,6 @@ class Message(WhoDidIt):
 
     class Meta:
         ordering = ['-id']
+
+    def __str__(self):
+        return f"Message ({self.id}) in Thread ({self.thread.id})"

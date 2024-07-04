@@ -8,7 +8,6 @@ from apps.chat.models import Thread, Message
 
 @admin.register(Thread)
 class ThreadAdmin(admin.ModelAdmin):
-
     list_display = ['id', 'created_on', 'created_by', 'updated_on', 'updated_by']
     search_fields = ['participants__first_name', 'participants__last_name']
     list_per_page = 15

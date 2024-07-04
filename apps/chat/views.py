@@ -1,17 +1,28 @@
-from django.db.models import Q, Count
+from django.db.models import Count
 from rest_framework import status
 from drf_rw_serializers import generics
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 from apps.chat.filters import ChatFilter
 from apps.chat.models import Thread, Message
 from apps.chat.serializers import (
-    DetailThreadSerializer,
     BaseThreadSerializer,
+    DetailThreadSerializer,
     CreateTreadSerializer,
+    BaseMessageSerializer
+)
 
-    BaseMessageSerializer,
+
+message_ids = openapi.Parameter(
+    name='message_ids',
+    in_=openapi.IN_QUERY,
+    description="IDs of the messages to be marked as read",
+    type=openapi.TYPE_STRING
 )
 
 
@@ -25,9 +36,6 @@ class ThreadListCreateAPIView(generics.ListCreateAPIView):
     filterset_class = ChatFilter
 
     def get_queryset(self):
-        """
-        Returns all threads.
-        """
         return Thread.objects.all()
 
     def create(self, request, *args, **kwargs):
@@ -38,12 +46,10 @@ class ThreadListCreateAPIView(generics.ListCreateAPIView):
         write_serializer.is_valid(raise_exception=True)
 
         validated_data = write_serializer.validated_data
-        participants = [validated_data['participants'][0].id, request.user.id]
-        thread = Thread.objects.filter(
-            participants__id__in=participants
-        ).annotate(num_chats=Count('participants')).filter(
-            num_chats=len(participants)
-        ).first()
+        participants = (validated_data['participants'][0].id, request.user.id)
+        thread = Thread.objects.filter(participants__id__in=participants).annotate(
+            num_chats=Count('participants')
+        ).filter(num_chats=len(participants)).first()
 
         if thread:
             write_serializer = self.read_serializer_class(thread)
@@ -55,9 +61,6 @@ class ThreadListCreateAPIView(generics.ListCreateAPIView):
         return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
-        """
-        Adds the request user to the thread participants and saves the new thread.
-        """
         serializer.validated_data['participants'].append(self.request.user)
         super().perform_create(serializer)
 
@@ -71,9 +74,6 @@ class ThreadRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     read_serializer_class = DetailThreadSerializer
 
     def get_object(self):
-        """
-        Retrieves a thread by its primary key.
-        """
         return get_object_or_404(Thread, pk=self.kwargs['thread_pk'])
 
 
@@ -84,24 +84,31 @@ class ThreadHistoryMessageListAPIView(generics.ListAPIView):
     serializer_class = BaseMessageSerializer
 
     def get_queryset(self):
-        """
-        Returns messages for a specific thread.
-        """
         thread_pk = self.kwargs['thread_pk']
         return Message.objects.filter(thread__pk=thread_pk)
 
-    def paginate_queryset(self, queryset):
-        """
-        Updates the read status of messages and paginates the queryset.
-        """
-        paginated_qs = super().paginate_queryset(queryset)
 
-        if paginated_qs is not None:
-            user = self.request.user
-            message_ids = [message.id for message in paginated_qs]
-            queryset.filter(Q(id__in=message_ids) & Q(is_read=False) & ~Q(created_by=user)).update(is_read=True)
+class MarkReadMessageAPIView(APIView):
+    """
+    API view to mark a message as read.
+    """
 
-        return super().paginate_queryset(queryset)
+    @staticmethod
+    @swagger_auto_schema(manual_parameters=[message_ids])
+    def post(request, *args, **kwargs):
+        message_ids = request.GET.get('message_ids')
+
+        if message_ids is None:
+            raise ValidationError(
+                detail='The "message_ids" parameter is required and must be set as a query parameter.'
+            )
+
+        unread_messages = Message.objects.filter(id__in=message_ids, is_read=False).exclude(created_by=request.user)
+
+        if unread_messages.exists():
+            unread_messages.update(is_read=True)
+
+        return Response(status=status.HTTP_200_OK)
 
 
 class MessageCreateAPIView(generics.CreateAPIView):
